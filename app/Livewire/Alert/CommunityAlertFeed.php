@@ -2,11 +2,12 @@
 
 namespace App\Livewire\Alert;
 
-use Livewire\Component;
+use App\Models\Tenant;
+use App\Models\Tenant\Facility;
 use App\Models\Tenant\MissingPersonAlert;
 use App\Models\Tenant\SightingReport;
-use App\Models\Tenant\Facility;
 use App\Services\SmsService;
+use Livewire\Component;
  use Livewire\Attributes\On;
 
 class CommunityAlertFeed extends Component
