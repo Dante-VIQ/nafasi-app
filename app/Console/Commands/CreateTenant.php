@@ -5,39 +5,42 @@ namespace App\Console\Commands;
 use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 
 class CreateTenant extends Command
 {
-    protected $signature = 'tenants:create {tenantId} {name} {domain}';
+    protected $signature = 'tenants:create
+                            {tenantId : Unique tenant ID (e.g. kiambu)}
+                            {name : Display name (e.g. "Kiambu County")}
+                            {domain : Full domain (e.g. kiambu.vumbidna.com)}';
 
-    protected $description = 'Create a tenant with hardcoded DB credentials';
+    protected $description = 'Create a new tenant (database must already exist in hPanel)';
 
     public function handle(): int
     {
-        $tenant = $this->argument('tenantId');
+        $tenantId = $this->argument('tenantId');
+        $name     = $this->argument('name');
+        $domain   = $this->argument('domain');
 
+        // 1. Create the tenant record
         $tenant = Tenant::create([
-            'id' => 'kiambu',
-            'name' => 'Kiambu County',
-            'domain' => 'kiambu.vumbidna.com',
-            'database_name' => 'nafasi_kiambu',
-            'db_username' => 'u355928035_kiambu_county',
-            'db_password' => env('KIAMBU_DB_PASSWORD'),
+            'id'                  => $tenantId,
+            'name'                => $name,
+            'organization'        => $name,
+            'subscription_tier'   => 'government',
+            'subscription_status' => 'active',
+            'status'              => 'active',
         ]);
 
-        config()->set('database.connections.tenant.database', 'nafasi_kiambu');
-        config()->set('database.connections.tenant.username', 'u355928035_kiambu_county');
-        config()->set('database.connections.tenant.password', env('KIAMBU_DB_PASSWORD'));
+        // 2. Attach the domain
+        $tenant->domains()->create(['domain' => $domain]);
 
-        DB::purge('tenant');
-        DB::reconnect('tenant');
+        $this->info("Tenant '{$tenantId}' created.");
 
-        Artisan::call('tenants:migrate', [
-            '--tenants' => ['kiambu'],
-        ]);
+        // 3. Run migrations (database must already exist + user must have privileges)
+        $this->info('Running tenant migrations...');
+        $this->call('tenants:migrate', ['--tenant' => $tenantId]);
 
-        $this->info('Tenant created and migrations started.');
+        $this->info("✅ Tenant '{$tenantId}' is ready.");
 
         return self::SUCCESS;
     }
