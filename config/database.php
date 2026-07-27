@@ -118,9 +118,9 @@ return [
     'driver'    => 'mysql',
     'host'      => env('DB_HOST', '127.0.0.1'),
     'port'      => env('DB_PORT', '3306'),
-    'database'  => null,                     // Will be set dynamically
-    'username'  => env('DB_USERNAME'),       // u355928035_nafasi
-    'password'  => env('DB_PASSWORD'),
+    'database'  => null,                    // will be set dynamically
+    'username'  => env('DB_USERNAME'),      // central user
+    'password'  => env('DB_PASSWORD'),      // central password
     'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'prefix'    => '',
