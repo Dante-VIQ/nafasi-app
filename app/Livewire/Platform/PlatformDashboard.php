@@ -3,11 +3,13 @@
 
 namespace App\Livewire\Platform;
 
-use Livewire\Component;
 use App\Models\Tenant;
+use App\Models\Tenant\Facility;
 use App\Models\User;
 use App\Services\ML\MlServiceClient;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Component;
 
 class PlatformDashboard extends Component
 {
@@ -40,7 +42,28 @@ protected function loadStats(): void
         ->pluck('count', 'primary_role')
         ->toArray();
 
-    $this->totalFacilities = $this->countFacilitiesAcrossTenants();
+    $this->totalFacilities = 0;
+    $activeTenants = Tenant::where('status', 'active')->get();
+
+    foreach ($activeTenants as $tenant) {
+        try {
+            tenancy()->initialize($tenant);
+
+            // Skip tenants whose database is missing or hasn't been migrated
+            if (!Schema::connection('tenant')->hasTable('facilities')) {
+                continue;
+            }
+
+            $this->totalFacilities += \App\Models\Tenant\Facility::count();
+        } catch (\Exception $e) {
+            report($e);
+        } finally {
+            // Only end if a tenant was actually initialised
+            if (tenancy()->initialized) {
+                tenancy()->end();
+            }
+        }
+    }
 }
 
 protected function countFacilitiesAcrossTenants(): int
