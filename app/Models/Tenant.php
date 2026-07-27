@@ -46,17 +46,5 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'status',
         ];
     }
-
- 
-
-public function database(): DatabaseConfig
-    {
-        return $this->databaseConfig()
-            ->setName('nafasi_' . $this->id)
-            ->setUsername(config('database.connections.mysql.username'))
-            ->setPassword(config('database.connections.mysql.password'))
-            ->setHost(config('database.connections.mysql.host'))
-            ->setPort(config('database.connections.mysql.port'));
-    }
     
 }
