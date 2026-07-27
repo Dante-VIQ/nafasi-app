@@ -40,12 +40,8 @@ class AppServiceProvider extends ServiceProvider
 
 
 Event::listen(TenancyInitialized::class, function ($event) {
-    $tenant = tenant();
-
     config([
-        'database.connections.tenant.database' => $tenant->database_name,
-        'database.connections.tenant.username' => $tenant->db_username,
-        'database.connections.tenant.password' => $tenant->db_password,
+        'database.connections.tenant.database' => $event->tenant->tenancy_db_name,
     ]);
 
     DB::purge('tenant');

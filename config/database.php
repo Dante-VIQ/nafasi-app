@@ -115,18 +115,18 @@ return [
         ],
 
 'tenant' => [
-    'driver' => 'mysql',
-    'host' => env('DB_HOST', '127.0.0.1'),
-    'port' => env('DB_PORT', '3306'),
-    'database' => null,
-    'username' => null,
-    'password' => null,
-    'charset' => 'utf8mb4',
+    'driver'    => 'mysql',
+    'host'      => env('DB_HOST', '127.0.0.1'),
+    'port'      => env('DB_PORT', '3306'),
+    'database'  => null,                     // Will be set dynamically
+    'username'  => env('DB_USERNAME'),       // u355928035_nafasi
+    'password'  => env('DB_PASSWORD'),
+    'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
-    'prefix' => '',
+    'prefix'    => '',
     'prefix_indexes' => true,
-    'strict' => true,
-    'engine' => null,
+    'strict'    => true,
+    'engine'    => null,
 ],
     ],
 
