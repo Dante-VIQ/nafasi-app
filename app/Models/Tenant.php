@@ -7,7 +7,6 @@ use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 use Stancl\Tenancy\DatabaseConfig;
-   use Stancl\Tenancy\DatabaseConfig;
 
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
@@ -51,16 +50,13 @@ class Tenant extends BaseTenant implements TenantWithDatabase
  
 
 public function database(): DatabaseConfig
-{
-    // The second parameter is the driver, e.g. 'mysql'
-    $config = new DatabaseConfig($this, 'mysql');
-
-    return $config
-        ->database('nafasi_' . $this->id)
-        ->username(config('database.connections.mysql.username'))
-        ->password(config('database.connections.mysql.password'))
-        ->host(config('database.connections.mysql.host'))
-        ->port(config('database.connections.mysql.port'));
-}
+    {
+        return $this->databaseConfig()
+            ->setName('nafasi_' . $this->id)
+            ->setUsername(config('database.connections.mysql.username'))
+            ->setPassword(config('database.connections.mysql.password'))
+            ->setHost(config('database.connections.mysql.host'))
+            ->setPort(config('database.connections.mysql.port'));
+    }
     
 }
