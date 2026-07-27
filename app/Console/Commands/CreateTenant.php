@@ -53,7 +53,7 @@ class CreateTenant extends Command
 
         // Run tenant migrations
         $this->info('Running tenant migrations...');
-        $this->call('tenancy:migrate', ['--tenant' => $id]);
+        $this->call('tenants:migrate', ['--tenants' => $id]);
         $this->info('Migrations complete.');
 
         $this->info("✅ Tenant '{$id}' is ready at https://{$domain}");
