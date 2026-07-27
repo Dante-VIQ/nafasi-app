@@ -39,20 +39,17 @@ class AppServiceProvider extends ServiceProvider
 
 
 
-Event::listen(TenancyInitialized::class, function () {
-    $tenant = tenant();
-    
-    if (!$tenant) {
-        return; // No tenant – do nothing
-    }
+    Event::listen(TenancyInitialized::class, function () {
+        $tenant = tenant();
+        if (!$tenant) return;
 
-    config([
-        'database.connections.tenant.database' => $tenant->tenancy_db_name,
-    ]);
+        // Derive the database name from the tenant id (prefix + id)
+        $database = 'nafasi_' . $tenant->getTenantKey();
 
-    DB::purge('tenant');
-    DB::reconnect('tenant');
-});
+        config(['database.connections.tenant.database' => $database]);
+        DB::purge('tenant');
+        DB::reconnect('tenant');
+    });
         // Livewire::setUpdateRoute(function ($handle) {
         //     return Route::middleware(['web', 'auth', '2fa', 'tenant.session'])
         //         ->post('/livewire/update', $handle);
