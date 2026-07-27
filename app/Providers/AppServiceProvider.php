@@ -4,12 +4,14 @@ namespace App\Providers;
 
 use App\Http\Responses\LoginViewResponse;
 use App\Http\Responses\RegisterViewResponse;
+use App\Listeners\StoreTenantInSession;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Fortify\Contracts\RegisterViewResponse as RegisterViewResponseContract;
 use Laravel\Fortify\Contracts\LoginViewResponse as LoginViewResponseContract;
+use Laravel\Fortify\Contracts\RegisterViewResponse as RegisterViewResponseContract;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +30,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Optional: store tenant_id in session on login – only if your User model has tenant_id
         // If not, remove this line entirely.
-        // Event::listen(Login::class, StoreTenantInSession::class);
+        Event::listen(Login::class, StoreTenantInSession::class);
     }
 }
