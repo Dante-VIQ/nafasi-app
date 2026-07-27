@@ -33,15 +33,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
 
-        if (tenancy()->initialized) {
-        config(['database.default' => 'tenant']);
+    //     if (tenancy()->initialized) {
+    //     config(['database.default' => 'tenant']);
+    // }
+
+
+
+Event::listen(TenancyInitialized::class, function () {
+    $tenant = tenant();
+    
+    if (!$tenant) {
+        return; // No tenant – do nothing
     }
 
-
-
-Event::listen(TenancyInitialized::class, function ($event) {
     config([
-        'database.connections.tenant.database' => $event->tenant->tenancy_db_name,
+        'database.connections.tenant.database' => $tenant->tenancy_db_name,
     ]);
 
     DB::purge('tenant');

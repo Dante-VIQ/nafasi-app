@@ -2,60 +2,46 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Tenant;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 class CreateTenant extends Command
 {
-    protected $signature = 'tenants:create
-                            {id : Unique tenant ID, e.g. kiambu-county}
-                            {name : Display name, e.g. "Kiambu County"}
-                            {domain : Full domain, e.g. kiambu.nafasi.health}
-                            {--org= : Organization name}
-                            {--tier=government : Subscription tier}
-                            {--region= : Region, e.g. Central}
-                            {--country=KE : Country code}';
+    protected $signature = 'tenants:create {tenantId} {name} {domain}';
+    protected $description = 'Create a tenant with hardcoded DB credentials';
 
-    protected $description = 'Create a new tenant with domain, database, and migrations';
-
-    public function handle()
+    public function handle(): int
     {
-        $id     = $this->argument('id');
-        $name   = $this->argument('name');
-        $domain = $this->argument('domain');
+        $tenantId = $this->argument('tenantId');
 
-        // Check for duplicate
-        if (Tenant::find($id)) {
-            $this->error("Tenant '{$id}' already exists.");
-            return 1;
-        }
-
-        // Create tenant
         $tenant = Tenant::create([
-            'id'                  => $id,
-            'name'                => $name,
-            'organization'        => $this->option('org') ?? $name,
-            'subscription_tier'   => $this->option('tier'),
-            'subscription_status' => 'active',
-            'region'              => $this->option('region'),
-            'country'             => $this->option('country'),
-            'status'              => 'active',
+            'id' => $tenantId,
+            'name' => $this->argument('name'),
+            'domain' => $this->argument('domain'),
+
+            // hardcoded values
+            'database_name' => 'u355928035_nafasi_kiambu',
+            'db_username'   => 'u355928035_kiambu_county',
+            'db_password'   => env('KIAMBU_DB_PASSWORD'),
         ]);
 
-        $tenant->domains()->create(['domain' => $domain]);
+        config([
+            'database.connections.tenant.database' => 'u355928035_nafasi_kiambu',
+            'database.connections.tenant.username'  => 'u355928035_kiambu_county',
+            'database.connections.tenant.password'  => env('KIAMBU_DB_PASSWORD'),
+        ]);
 
-        $this->info("Tenant '{$id}' created.");
+        DB::purge('tenant');
+        DB::reconnect('tenant');
 
-        // Create database
-        $this->info('Creating tenant database...');
-        $tenant->createDatabase();
-        $this->info('Database created.');
+        Artisan::call('tenants:migrate', [
+            '--tenants' => [$tenant->id],
+        ]);
 
-        // Run tenant migrations
-        $this->info('Running tenant migrations...');
-        $this->call('tenants:migrate', ['--tenants' => $id]);
-        $this->info('Migrations complete.');
+        $this->info('Tenant created and migrations started.');
 
-        $this->info("✅ Tenant '{$id}' is ready at https://{$domain}");
+        return self::SUCCESS;
     }
 }
