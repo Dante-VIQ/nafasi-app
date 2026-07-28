@@ -31,21 +31,23 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'features' => 'array',
         'trial_ends_at' => 'datetime',
     ];
-
-    // These columns are custom, must be listed so the package knows about them
+    
     public static function getCustomColumns(): array
-    {
-        return [
-            'id',
-            'name',
-            'organization',
-            'subscription_tier',
-            'subscription_status',
-            'trial_ends_at',
-            'features',
-            'region',
-            'country',
-            'status',
-        ];
-    }
+{
+    return [
+        'id',
+        'name',
+        'organization',
+        'subscription_tier',
+        'subscription_status',
+        'trial_ends_at',
+        'features',
+        'region',
+        'country',
+        'status',
+        'tenancy_db_name',
+        'tenancy_db_username',
+        'tenancy_db_password',
+    ];
+}
 }
