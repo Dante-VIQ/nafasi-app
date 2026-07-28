@@ -6,7 +6,6 @@ use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
-use Stancl\Tenancy\DatabaseConfig;
 
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
@@ -23,11 +22,14 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'region',
         'country',
         'status',
+        'tenancy_db_name',
+        'tenancy_db_username',
+        'tenancy_db_password',
     ];
 
     protected $casts = [
-        'features'        => 'array',
-        'trial_ends_at'   => 'datetime',
+        'features' => 'array',
+        'trial_ends_at' => 'datetime',
     ];
 
     // These columns are custom, must be listed so the package knows about them
@@ -46,5 +48,4 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             'status',
         ];
     }
-    
 }
