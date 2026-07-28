@@ -29,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
 
         Livewire::setUpdateRoute(fn ($handle) => Route::post('/livewire/update', $handle)
             ->middleware(['web', InitializeTenancyByDomainUnlessCentral::class]));
+            
         // Rate limiters
         RateLimiter::for('login', fn ($request) => Limit::perMinute(5)->by($request->ip()));
         RateLimiter::for('api', fn ($request) => Limit::perMinute(60)->by($request->ip()));
