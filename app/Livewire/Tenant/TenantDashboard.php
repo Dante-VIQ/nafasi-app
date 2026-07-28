@@ -3,6 +3,7 @@
 
 namespace App\Livewire\Tenant;
 
+use App\Models\Tenant;
 use App\Models\Tenant\Appointment;
 use App\Models\Tenant\EmergencyDispatch;
 use App\Models\Tenant\Facility;
@@ -26,10 +27,31 @@ class TenantDashboard extends Component
 
     public function mount()
     {
+        $this->ensureTenant();
         $this->loadStats();
         $this->loadRecentActivity();
     }
 
+    public function ensureTenant(): void
+{
+    if (tenancy()->initialized) {
+        return;
+    }
+
+    $host = request()->getHost();
+
+    // This component is tenant-only. Never attempt resolution on the
+    // central domain — CentralCommunityAlertFeed is what renders there.
+    if (in_array($host, config('tenancy.central_domains', []), true)) {
+        return;
+    }
+
+    $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', $host))->first();
+
+    if ($tenant) {
+        tenancy()->initialize($tenant);
+    }
+}
     protected function loadStats(): void
     {
         // Facilities
