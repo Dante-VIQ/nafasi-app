@@ -108,14 +108,17 @@ class NoOpMySQLDatabaseManager implements TenantDatabaseManager
      * pre-provisioned credentials, since Hostinger gives each database
      * its own user rather than one shared super-user.
      */
-    public function makeConnectionConfig(array $baseConfig, string $databaseName): array
-    {
-        $tenant = tenancy()->tenant; // current tenant being initialized
+public function makeConnectionConfig(array $baseConfig, string $databaseName): array
+{
+    $tenant = tenancy()->tenant;
 
-        return array_merge($baseConfig, [
-            'database' => $databaseName,
-            'username' => $tenant->tenancy_db_username ?? $baseConfig['username'],
-            'password' => $tenant->tenancy_db_password ?? $baseConfig['password'],
-        ]);
-    }
+    $username = $tenant->tenancy_db_username;
+    $password = $tenant->tenancy_db_password;
+
+    return array_merge($baseConfig, [
+        'database' => $databaseName,
+        'username' => filled($username) ? $username : $baseConfig['username'],
+        'password' => filled($password) ? $password : $baseConfig['password'],
+    ]);
+}
 }

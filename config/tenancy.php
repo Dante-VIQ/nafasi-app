@@ -64,7 +64,12 @@ return [
             // 'mysql' => Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
             // 'mariadb' => Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class,
             // 'pgsql' => Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
-            'mysql' => \App\Tenancy\NoOpMySQLDatabaseManager::class,
+            // 'mysql' => \App\Tenancy\NoOpMySQLDatabaseManager::class,
+
+            'mysql' => app()->environment('local')
+            ? \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class
+            : \App\Tenancy\NoOpMySQLDatabaseManager::class,
+    ],
 
         /**
          * Use this database manager for MySQL to have a DB user created for each tenant database.

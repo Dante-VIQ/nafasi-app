@@ -6,7 +6,7 @@ use Closure;
 use App\Models\Tenant;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
-class InitializeTenantForPublic
+class InitializePublicTenant
 {
     public function handle($request, Closure $next)
     {
