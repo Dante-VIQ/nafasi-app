@@ -1,4 +1,5 @@
 <?php
+// app/Http/Middleware/InitializeTenantForPublic.php
 
 namespace App\Http\Middleware;
 
@@ -10,6 +11,7 @@ class InitializePublicTenant
 {
     public function handle($request, Closure $next)
     {
+        // Try to initialise tenant via domain
         $domainMiddleware = app(InitializeTenancyByDomain::class);
 
         try {

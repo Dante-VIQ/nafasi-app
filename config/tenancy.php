@@ -17,8 +17,10 @@ return [
      * Only relevant if you're using the domain or subdomain identification middleware.
      */
     'central_domains' => [
-        '127.0.0.1',
-        'localhost',
+    'vumbidna.com',
+    'www.vumbidna.com', // if you serve both
+    '127.0.0.1',
+    'localhost',
     ],
 
     /**
@@ -66,9 +68,9 @@ return [
             // 'pgsql' => Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
             // 'mysql' => \App\Tenancy\NoOpMySQLDatabaseManager::class,
 
-            'mysql' => app()->environment('local')
-            ? \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class
-            : \App\Tenancy\NoOpMySQLDatabaseManager::class,
+    'mysql' => env('APP_ENV') === 'local'
+        ? \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class
+        : \App\Tenancy\NoOpMySQLDatabaseManager::class,
     
 
         /**
