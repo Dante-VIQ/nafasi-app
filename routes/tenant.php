@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Alert\MissingPersonAlertManager;
 use App\Livewire\Facility\BookingManager;
 use App\Livewire\Facility\CongestionButton;
 use App\Livewire\Facility\Dashboard;
@@ -67,7 +68,7 @@ Route::middleware([
         // Profile and other central routes…
     });
 
-    Route::domain('{subdomain}.nafasi.test')->middleware(['auth', '2fa', 'tenant.session'])->group(function () {
+    Route::domain('{subdomain}.vumbidna.com')->middleware(['auth', '2fa', 'tenant.session'])->group(function () {
         // dd(\App\Models\User::all());
 
         // Tenant Admin routes
@@ -84,7 +85,7 @@ Route::middleware([
                 Route::get('/users', TenantUserManager::class)->name('users');
                 Route::get('/facilities/register', RegistrationWizard::class)
                     ->name('facilities.register');
-                    
+
             });
 
         // Facility Admin & Staff routes
@@ -101,9 +102,9 @@ Route::middleware([
                     Route::get('/profile/edit/{facility}', FacilityProfileEditor::class)
                         ->name('profile.edit');
                     Route::get('/staff', FacilityStaffManager::class)->name('staff');
-                    
-                    Route::get('/alerts/manage', \App\Livewire\Alert\MissingPersonAlertManager::class)
-    ->name('alerts.manage');
+
+                    Route::get('/alerts/manage', MissingPersonAlertManager::class)
+                        ->name('alerts.manage');
 
                 });
 
@@ -128,8 +129,8 @@ Route::middleware([
         Route::middleware(['auth', '2fa', 'role:coordinator,tenant-admin,platform-owner,super-admin',
             InitializeTenancyByDomain::class,
         ])->group(function () {
-    Route::get('/alerts/manage', \App\Livewire\Alert\MissingPersonAlertManager::class)->name('alerts.manage');
-});
+            Route::get('/alerts/manage', MissingPersonAlertManager::class)->name('alerts.manage');
+        });
     });
 
 });
