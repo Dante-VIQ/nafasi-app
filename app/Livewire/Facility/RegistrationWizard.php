@@ -3,6 +3,7 @@
 
 namespace App\Livewire\Facility;
 
+use App\Models\Tenant;
 use App\Models\Tenant\Facility;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -153,14 +154,35 @@ public function nextStep(): void
         $this->longitude = $lng;
     }
 
+    public function ensureTenant(): void
+{
+    if (tenancy()->initialized) {
+        return;
+    }
+
+    $host = request()->getHost();
+
+    // This component is tenant-only. Never attempt resolution on the
+    // central domain — CentralCommunityAlertFeed is what renders there.
+    if (in_array($host, config('tenancy.central_domains', []), true)) {
+        return;
+    }
+
+    $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', $host))->first();
+
+    if ($tenant) {
+        tenancy()->initialize($tenant);
+    }
+}
     public function submit(): void
     {
+        $this->ensureTenant();
           $this->validate();
 
     // Ensure we are connected to the tenant database
     $user = auth()->user();
     if ($user && $user->tenant_id) {
-        $database = 'nafasi_tenant_' . $user->tenant_id;
+        $database = 'nafasi_' . $user->tenant_id;
         config(["database.connections.tenant.database" => $database]);
         DB::purge('tenant');
         DB::reconnect('tenant');
