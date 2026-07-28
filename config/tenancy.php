@@ -69,7 +69,7 @@ return [
             'mysql' => app()->environment('local')
             ? \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class
             : \App\Tenancy\NoOpMySQLDatabaseManager::class,
-    ],
+    
 
         /**
          * Use this database manager for MySQL to have a DB user created for each tenant database.
