@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Platform;
 
-use Livewire\Component;
 use App\Models\Tenant;
+use App\Rules\ValidTenantDatabaseCredentials;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Livewire\Component;
 
 class TenantManager extends Component
 {
@@ -19,18 +21,69 @@ class TenantManager extends Component
     public string $subscription_tier = 'government';
     public string $region = '';
 
-    protected $rules = [
-        'id'                => 'required|alpha_dash|max:50|unique:tenants,id',
-        'name'              => 'required|string|max:255',
-        'domain'            => 'required|string|max:255|unique:domains,domain',
-        'organization'      => 'nullable|string|max:255',
-        'subscription_tier' => 'required|in:chemist,clinic,hospital,government,enterprise',
-        'region'            => 'nullable|string|max:100',
-    ];
+    // Database credentials — pre-provisioned manually in hPanel before
+    // this form is submitted. See the suggestedDbName() helper below,
+    // which the view uses to show the admin exactly what to create.
+    public string $tenancy_db_name = '';
+    public string $tenancy_db_username = '';
+    public string $tenancy_db_password = '';
+
+    /**
+     * Single source of truth for validation rules. Livewire checks for
+     * a rules() method before falling back to a $rules property, so we
+     * only define the method — keeping both invites them drifting apart.
+     */
+    protected function rules(): array
+    {
+        return [
+            'id'                  => ['required', 'string', 'alpha_dash', 'max:50', 'unique:tenants,id'],
+            'name'                => ['required', 'string', 'max:255'],
+            'domain'              => ['required', 'string', 'max:255', 'unique:domains,domain'],
+            'organization'        => ['nullable', 'string', 'max:255'],
+            'subscription_tier'   => ['required', 'in:chemist,clinic,hospital,government,enterprise'],
+            'region'              => ['nullable', 'string', 'max:100'],
+            'tenancy_db_username' => ['required', 'string'],
+            'tenancy_db_password' => ['required', 'string'],
+            'tenancy_db_name'     => ['required', 'string', new ValidTenantDatabaseCredentials(
+                $this->tenancy_db_username,
+                $this->tenancy_db_password,
+            )],
+        ];
+    }
 
     public function mount()
     {
         $this->loadTenants();
+        $this->syncSuggestedDbName();
+    }
+
+    /**
+     * Computed property, available in the view as $this->suggestedDbName.
+     * Keeps the naming convention (account prefix + fixed app prefix +
+     * tenant id) in one place, so the admin never has to hand-type it
+     * and risk the exact mismatch bug we hit earlier.
+     */
+    public function getSuggestedDbNameProperty(): string
+    {
+        $prefix = config('hosting.hostinger_account_prefix', 'u355928035_');
+        $slug   = str_replace('-', '_', $this->id ?: '[id]');
+
+        return $prefix.'nafasi_'.$slug;
+    }
+
+    /**
+     * Called whenever `id` changes (wire:model.live) so the db_name
+     * field auto-fills with the suggestion rather than staying blank
+     * or holding a stale value from a previous id.
+     */
+    public function updatedId(): void
+    {
+        $this->syncSuggestedDbName();
+    }
+
+    protected function syncSuggestedDbName(): void
+    {
+        $this->tenancy_db_name = $this->getSuggestedDbNameProperty();
     }
 
     public function loadTenants()
@@ -45,7 +98,6 @@ class TenantManager extends Component
     {
         $this->validate();
 
-        // Create tenant record
         $tenant = Tenant::create([
             'id'                  => $this->id,
             'name'                => $this->name,
@@ -55,20 +107,43 @@ class TenantManager extends Component
             'region'              => $this->region,
             'country'             => 'KE',
             'status'              => 'active',
+            'tenancy_db_name'     => $this->tenancy_db_name,
+            'tenancy_db_username' => $this->tenancy_db_username,
+            'tenancy_db_password' => $this->tenancy_db_password,
         ]);
 
-        // Attach domain
         $tenant->domains()->create(['domain' => $this->domain]);
 
-        // Run migrations (database must already exist in hPanel + user must have access)
         try {
-            Artisan::call('tenants:migrate', ['--tenant' => $this->id]);
+            // --tenants (plural, array option) — stancl/tenancy's real
+            // option name; --tenant silently migrates ALL tenants instead.
+            $exitCode = Artisan::call('tenants:migrate', ['--tenants' => [$this->id]]);
+
+            if ($exitCode !== 0) {
+                throw new \RuntimeException('tenants:migrate returned a non-zero exit code.');
+            }
+
             $message = "Tenant '{$this->name}' created and migrations completed.";
-        } catch (\Exception $e) {
-            $message = "Tenant created, but migrations failed: " . $e->getMessage();
+        } catch (\Throwable $e) {
+            Log::error("TenantManager: migration failed for [{$this->id}]: {$e->getMessage()}");
+
+            // Roll back the half-created tenant so the same id/domain
+            // can be retried immediately instead of colliding on unique
+            // constraints next attempt.
+            $tenant->domains()->delete();
+            $tenant->delete();
+
+            session()->flash('error', "Tenant creation failed during migration: {$e->getMessage()}");
+            $this->loadTenants();
+            return;
         }
 
-        $this->reset(['id', 'name', 'domain', 'organization', 'subscription_tier', 'region', 'showCreateForm']);
+        $this->reset([
+            'id', 'name', 'domain', 'organization', 'subscription_tier', 'region',
+            'tenancy_db_name', 'tenancy_db_username', 'tenancy_db_password',
+            'showCreateForm',
+        ]);
+
         session()->flash('message', $message);
         $this->loadTenants();
     }
