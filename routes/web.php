@@ -11,12 +11,14 @@ use App\Livewire\Crisis\CrisisChat;
 use App\Livewire\Emergency\EmergencyDispatchForm;
 use App\Livewire\LandingPage;
 use App\Livewire\Platform\PlatformDashboard;
+use App\Livewire\Platform\TenantManager;
 use App\Livewire\PrivacyPolicy;
 use App\Livewire\Profile\ProfilePage;
 use App\Livewire\Reporting\AnonymousReportForm;
 use App\Livewire\Tenant\TenantUserManager;
 use App\Livewire\TermsOfService;
 use Illuminate\Support\Facades\Route;
+
 
 // ============================================
 // PUBLIC — No Authentication
@@ -51,14 +53,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', ProfilePage::class)->name('profile');
     Route::get('/profile/security', ProfilePage::class)->name('profile.security');
 
-    // Platform Owner & Super Admin
-    Route::middleware(['role:platform-owner,super-admin'])
-        ->prefix('platform')
-        ->name('platform.')
-        ->group(function () {
-            Route::get('/dashboard', PlatformDashboard::class)->name('dashboard');
-            Route::get('/tenants', TenantUserManager::class)->name('tenants');
-        });
+// Platform Owner & Super Admin
+Route::middleware(['auth', '2fa', 'role:platform-owner,super-admin'])
+    ->prefix('platform')
+    ->name('platform.')
+    ->group(function () {
+        // Dashboard
+        Route::get('/dashboard', \App\Livewire\Platform\PlatformDashboard::class)->name('dashboard');
+
+        // Tenant Management (create, list, manage tenants)
+        Route::get('/tenants', TenantUserManager::class)->name('tenants');
+        Route::get('/tenants/create', TenantManager::class)->name('tenants.create');
+    });
 
     // Admin
     Route::middleware(['role:platform-owner,super-admin'])

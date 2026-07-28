@@ -84,6 +84,7 @@ Route::middleware([
                 Route::get('/users', TenantUserManager::class)->name('users');
                 Route::get('/facilities/register', RegistrationWizard::class)
                     ->name('facilities.register');
+                    
             });
 
         // Facility Admin & Staff routes

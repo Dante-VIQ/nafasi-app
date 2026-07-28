@@ -13,7 +13,11 @@
                     🧠 AI Dashboard
                 </a>
                 <a href="{{ route('platform.tenants') }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                    Manage Tenants
+                    Manage Users
+                </a>
+
+                <a href="{{ route('platform.tenants.manage') }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                    + Add Tenants
                 </a>
             </div>
         </div>
