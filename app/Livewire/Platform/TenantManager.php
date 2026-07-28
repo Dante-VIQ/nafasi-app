@@ -16,7 +16,12 @@ class TenantManager extends Component
     // Form fields
     public string $id = '';
     public string $name = '';
-    public string $domain = '';
+
+    // Multiple domains per tenant — e.g. the default subdomain plus a
+    // later custom domain. Starts with one empty slot; the admin can
+    // add more or remove down to a minimum of one.
+    public array $domains = [''];
+
     public string $organization = '';
     public string $subscription_tier = 'government';
     public string $region = '';
@@ -38,7 +43,8 @@ class TenantManager extends Component
         return [
             'id'                  => ['required', 'string', 'alpha_dash', 'max:50', 'unique:tenants,id'],
             'name'                => ['required', 'string', 'max:255'],
-            'domain'              => ['required', 'string', 'max:255', 'unique:domains,domain'],
+            'domains'             => ['required', 'array', 'min:1'],
+            'domains.*'           => ['required', 'string', 'max:255', 'distinct', 'unique:domains,domain'],
             'organization'        => ['nullable', 'string', 'max:255'],
             'subscription_tier'   => ['required', 'in:chemist,clinic,hospital,government,enterprise'],
             'region'              => ['nullable', 'string', 'max:100'],
@@ -86,6 +92,23 @@ class TenantManager extends Component
         $this->tenancy_db_name = $this->getSuggestedDbNameProperty();
     }
 
+    public function addDomainField(): void
+    {
+        $this->domains[] = '';
+    }
+
+    public function removeDomainField(int $index): void
+    {
+        // Always keep at least one input visible — nothing to remove
+        // down to zero, since every tenant needs at least one domain.
+        if (count($this->domains) <= 1) {
+            return;
+        }
+
+        unset($this->domains[$index]);
+        $this->domains = array_values($this->domains);
+    }
+
     public function loadTenants()
     {
         $this->tenants = Tenant::with('domains')
@@ -112,7 +135,14 @@ class TenantManager extends Component
             'tenancy_db_password' => $this->tenancy_db_password,
         ]);
 
-        $tenant->domains()->create(['domain' => $this->domain]);
+        // Filter out any blank slots left from add/remove interactions,
+        // then attach every domain to this tenant.
+        $tenant->domains()->createMany(
+            collect($this->domains)
+                ->filter(fn ($d) => trim($d) !== '')
+                ->map(fn ($d) => ['domain' => trim($d)])
+                ->all()
+        );
 
         try {
             // --tenants (plural, array option) — stancl/tenancy's real
@@ -139,10 +169,11 @@ class TenantManager extends Component
         }
 
         $this->reset([
-            'id', 'name', 'domain', 'organization', 'subscription_tier', 'region',
+            'id', 'name', 'domains', 'organization', 'subscription_tier', 'region',
             'tenancy_db_name', 'tenancy_db_username', 'tenancy_db_password',
             'showCreateForm',
         ]);
+        $this->domains = ['']; // reset() empties the array entirely; restore one blank slot
 
         session()->flash('message', $message);
         $this->loadTenants();

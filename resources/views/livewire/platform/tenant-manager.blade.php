@@ -38,10 +38,23 @@
                     <input wire:model="name" class="mt-1 w-full rounded-lg border-gray-300" placeholder="Kiambu County">
                     @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium">Domain *</label>
-                    <input wire:model="domain" class="mt-1 w-full rounded-lg border-gray-300" placeholder="kiambu.vumbidna.com">
-                    @error('domain') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium mb-1">Domains *</label>
+                    @foreach($domains as $index => $d)
+                        <div class="flex items-center gap-2 mb-2">
+                            <input
+                                wire:model="domains.{{ $index }}"
+                                class="w-full rounded-lg border-gray-300"
+                                placeholder="{{ $index === 0 ? 'kiambu.vumbidna.com (default)' : 'custom-domain.example.com' }}"
+                            >
+                            @if(count($domains) > 1)
+                                <button type="button" wire:click="removeDomainField({{ $index }})" class="text-red-500 text-sm px-2">✕</button>
+                            @endif
+                        </div>
+                        @error("domains.{$index}") <span class="text-red-500 text-xs block -mt-1 mb-2">{{ $message }}</span> @enderror
+                    @endforeach
+                    @error('domains') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    <button type="button" wire:click="addDomainField" class="text-sm text-blue-600">+ Add another domain</button>
                 </div>
                 <div>
                     <label class="block text-sm font-medium">Organization</label>
@@ -113,7 +126,11 @@
                             <div class="text-xs text-gray-500">{{ $tenant['id'] }}</div>
                         </td>
                         <td class="px-6 py-4 text-sm">
-                            {{ $tenant['domains'][0]['domain'] ?? 'N/A' }}
+                            @forelse($tenant['domains'] as $d)
+                                <div>{{ $d['domain'] }}</div>
+                            @empty
+                                N/A
+                            @endforelse
                         </td>
                         <td class="px-6 py-4 text-sm capitalize">{{ $tenant['subscription_tier'] }}</td>
                         <td class="px-6 py-4 text-sm">{{ $tenant['region'] ?? '—' }}</td>
