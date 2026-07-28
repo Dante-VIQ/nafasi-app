@@ -149,7 +149,7 @@ class TenancyServiceProvider extends ServiceProvider
             return Route::post('/livewire/update', $handle)
                 ->middleware(
                     'web',
-                    'universal',
+                    'tenant',
                     InitializeTenancyByDomain::class, // or whatever tenancy middleware you use
                 );
         });

@@ -1,5 +1,4 @@
 <?php
-// app/Http/Middleware/InitializeTenantForPublic.php
 
 namespace App\Http\Middleware;
 
@@ -7,11 +6,10 @@ use Closure;
 use App\Models\Tenant;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 
-class InitializePublicTenant
+class InitializeTenantForPublic
 {
     public function handle($request, Closure $next)
     {
-        // Try to initialise tenant via domain
         $domainMiddleware = app(InitializeTenancyByDomain::class);
 
         try {
