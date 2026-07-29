@@ -78,7 +78,7 @@ public function reject()
 
     $this->showRejectConfirm = false;
     session()->flash('message', 'Facility rejected.');
-    return redirect()->route('verification.queue');
+    return redirect()->url('verification.queue');
 }
 
     public function render()

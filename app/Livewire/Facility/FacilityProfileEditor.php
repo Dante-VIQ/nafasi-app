@@ -36,11 +36,12 @@ class FacilityProfileEditor extends Component
     public array $languages = [];
     public $license_document = null;
 
-public function mount($facility = null): void
+
+public function mount($facilityId = null): void
 {
-    if ($facility) {
+    if ($facilityId) {
         // Tenant admin editing a specific facility
-        $this->facility = Facility::findOrFail($facility);
+        $this->facility = Facility::findOrFail($facilityId);
     } else {
         // Facility admin editing their own facility
         $facilityId = Auth::user()->facility_id;

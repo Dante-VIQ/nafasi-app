@@ -99,8 +99,7 @@ Route::middleware([
 
                 Route::middleware(['role:facility-admin,tenant-admin,platform-owner,super-admin',
                 ])->group(function () {
-                    Route::get('/profile/edit/{facility}', FacilityProfileEditor::class)
-                        ->name('profile.edit');
+                    Route::get('/profile/edit/{facilityId}', FacilityProfileEditor::class)->name('profile.edit');
                     Route::get('/staff', FacilityStaffManager::class)->name('staff');
 
                     Route::get('/alerts/manage', MissingPersonAlertManager::class)

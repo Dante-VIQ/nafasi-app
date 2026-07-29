@@ -3,9 +3,10 @@
 
 namespace App\Livewire\Coordinator;
 
-use Livewire\Component;
+use App\Models\Tenant;
 use App\Models\Tenant\AssistanceRequest;
 use App\Models\Tenant\Facility;
+use Livewire\Component;
 
 class RequestQueue extends Component
 {
@@ -21,8 +22,30 @@ class RequestQueue extends Component
         $this->refreshQueue();
     }
 
+        public function ensureTenant(): void
+    {
+        if (tenancy()->initialized) {
+            return;
+        }
+
+        $host = request()->getHost();
+
+        // This component is tenant-only. Never attempt resolution on the
+        // central domain — CentralCommunityAlertFeed is what renders there.
+        if (in_array($host, config('tenancy.central_domains', []), true)) {
+            return;
+        }
+
+        $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', $host))->first();
+
+        if ($tenant) {
+            tenancy()->initialize($tenant);
+        }
+    }
+
     public function refreshQueue()
     {
+         $this->ensureTenant();
         $this->pendingRequests = AssistanceRequest::with('dispatchedFacility')
             ->where('status', 'pending')
             ->orderByRaw("CASE WHEN urgency = 'emergency' THEN 1 WHEN urgency = 'urgent' THEN 2 ELSE 3 END")

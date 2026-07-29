@@ -21,7 +21,7 @@ class FacilityReviewQueue extends Component
 
         foreach ($tenants as $tenant) {
             // Switch the tenant connection to this tenant's database
-            $database = 'nafasi_tenant_' . $tenant->id;
+            $database = 'nafasi_' . $tenant->id;
             config(["database.connections.tenant.database" => $database]);
             DB::purge('tenant');
             DB::reconnect('tenant');

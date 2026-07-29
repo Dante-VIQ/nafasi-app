@@ -93,7 +93,7 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-right text-sm">
-                                <a href="{{ url('/facility/profile/edit', $facility->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
+                                <a href="{{ url('/facility/profile/edit', ['facilityId' => $facility->id]) }}" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
                                 <button wire:click="toggleActive({{ $facility->id }})" 
                                         class="{{ $facility->is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900' }}">
                                     {{ $facility->is_active ? 'Deactivate' : 'Activate' }}

@@ -13,28 +13,39 @@ class SituationRouter
         protected MlServiceClient $ml
     ) {}
 
-        public function ensureTenant(): void
+    /**
+     * Guarantee a tenant is loaded before we touch the tenant database.
+     * On tenant domains it's already set; on central domains (127.0.0.1)
+     * we fall back to the first active tenant so the landing page can
+     * search facilities during development/demo.
+     */
+    protected function ensureTenant(): void
     {
         if (tenancy()->initialized) {
             return;
         }
 
+        // 1. Try to identify by domain (same as Stancl's middleware)
         $host = request()->getHost();
+        $tenant = Tenant::whereHas('domains', fn($q) => $q->where('domain', $host))->first();
 
-        // This component is tenant-only. Never attempt resolution on the
-        // central domain — CentralCommunityAlertFeed is what renders there.
-        if (in_array($host, config('tenancy.central_domains', []), true)) {
+        if ($tenant) {
+            tenancy()->initialize($tenant);
             return;
         }
 
-        $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', $host))->first();
-
+        // 2. Central domain or unknown host → use the first active tenant
+        $tenant = Tenant::where('status', 'active')->first();
         if ($tenant) {
             tenancy()->initialize($tenant);
         }
     }
+
     public function route(string $text, ?float $lat = null, ?float $lng = null): array
     {
+        // Tenant must be ready before any facility query
+        $this->ensureTenant();
+
         $classification = $this->classifySafely($text);
 
         // 1. Crisis takes priority
@@ -81,17 +92,14 @@ class SituationRouter
     }
 
     /**
-     * Call the ML classifier, but never let its failure crash routing —
-     * this sits in front of crisis detection, so an ML outage must
-     * degrade gracefully (fall through to keyword checks / facility
-     * search) rather than 500 the entire intake flow.
+     * Call the ML classifier, but never let its failure crash routing.
      */
     protected function classifySafely(string $text): array
     {
         try {
             return $this->ml->classify($text);
         } catch (\Throwable $e) {
-            Log::error('SituationRouter: ML classification failed, falling back. '.$e->getMessage());
+            Log::error('SituationRouter: ML classification failed, falling back. ' . $e->getMessage());
 
             return [
                 'is_crisis' => false,
@@ -106,57 +114,48 @@ class SituationRouter
     }
 
     /**
-     * Keyword fallback for anonymous-report intent, independent of the
-     * ML classifier — kept as a floor in case the classifier misses it
-     * (or is down and we're on the fallback classification above).
+     * Keyword fallback for anonymous-report intent.
      */
     protected function mentionsAnonymousReport(string $text): bool
     {
         $text = strtolower($text);
-
         return str_contains($text, 'report anonymously')
             || str_contains($text, 'anonymous report');
     }
 
-    protected function findFacilitiesByHints(array $hints, ?float $lat, ?float $lng): array
-    {
-        $this->ensureTenant();
-        $query = Facility::query()
-            ->where('is_active', true)
-            ->where('registration_status', 'approved');
+protected function findFacilitiesByHints(array $hints, ?float $lat, ?float $lng): array
+{
+    $query = Facility::query()
+        ->where('is_active', true)
+        ->where('registration_status', 'approved');
 
-        if (! empty($hints)) {
-            $query->whereIn('facility_type', $hints);
-        }
-
-        // Explicit null checks, not truthy checks — 0.0 is a valid
-        // latitude (parts of Kenya sit right on the equator), and
-        // `$lat && $lng` would silently skip distance calculation
-        // for exactly those coordinates.
-        if ($lat !== null && $lng !== null) {
-            $query->selectRaw('
-                *,
-                (6371 * acos(
-                    LEAST(1, GREATEST(-1,
-                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?))
-                        + sin(radians(?)) * sin(radians(latitude))
-                    ))
-                )) AS distance
-            ', [$lat, $lng, $lat])
-                ->orderBy('distance')
-                ->having('distance', '<', 20);
-        }
-
-        $query->orderByRaw("
-            CASE 
-                WHEN congestion_status = 'low' THEN 1 
-                WHEN congestion_status = 'moderate' THEN 2 
-                ELSE 3 
-            END
-        ");
-
-        return $query->take(10)->get()->toArray();
+    if (!empty($hints)) {
+        $query->whereIn('facility_type', $hints);
     }
+
+    if ($lat !== null && $lng !== null) {
+        // Haversine formula with proper handling for equatorial and meridian edge cases
+        $haversine = '(6371 * acos(LEAST(1, GREATEST(-1, 
+            cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) 
+            + sin(radians(?)) * sin(radians(latitude))
+        ))))';
+
+        $query->selectRaw("*, {$haversine} AS distance", [$lat, $lng, $lat])
+            ->orderBy('distance')
+            ->having('distance', '<', 20);
+    }
+
+    // Order by congestion level (low → moderate → everything else)
+    $query->orderByRaw("
+        CASE 
+            WHEN congestion_status = 'low' THEN 1 
+            WHEN congestion_status = 'moderate' THEN 2 
+            ELSE 3 
+        END
+    ");
+
+    return $query->take(10)->get()->toArray();
+}
 
     protected function crisisResponse(string $language): array
     {

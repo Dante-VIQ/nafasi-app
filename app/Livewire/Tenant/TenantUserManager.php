@@ -2,12 +2,13 @@
 
 namespace App\Livewire\Tenant;
 
-use Livewire\Component;
-use Livewire\WithPagination;
+use App\Models\Tenant;
 use App\Models\User;
-use Spatie\Permission\Models\Role;   // ← correct import
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
+use Livewire\WithPagination;
+use Spatie\Permission\Models\Role;   // ← correct import
 
 class TenantUserManager extends Component
 {
@@ -30,13 +31,32 @@ class TenantUserManager extends Component
 
     protected $rules = [
         'newName' => 'required|string|max:255',
-        'newEmail' => 'required|email|unique:users,email',
+        'newEmail' => 'required|email|unique:mysql.users,email',
         'newPhone' => 'nullable|string|max:20',
         'newRole' => 'required|string',
         'newPassword' => 'required|string|min:8',
     ];
 
+    public function ensureTenant(): void
+    {
+        if (tenancy()->initialized) {
+            return;
+        }
 
+        $host = request()->getHost();
+
+        // This component is tenant-only. Never attempt resolution on the
+        // central domain — CentralCommunityAlertFeed is what renders there.
+        if (in_array($host, config('tenancy.central_domains', []), true)) {
+            return;
+        }
+
+        $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', $host))->first();
+
+        if ($tenant) {
+            tenancy()->initialize($tenant);
+        }
+    }
 
 public function mount(): void
 {
@@ -62,9 +82,10 @@ public function mount(): void
 
     public function createUser(): void
     {
+         $this->ensureTenant();
         $this->validate();
         
-        $user = User::create([
+        $user = (new User())->setConnection('mysql')->create([
             'name'          => $this->newName,
             'email'         => $this->newEmail,
             'phone'         => $this->newPhone,
@@ -82,7 +103,7 @@ public function mount(): void
 
     public function startEdit(int $userId): void
     {
-        $user = User::where('tenant_id', $this->currentTenantId())
+        $user = User::on('mysql')->where('tenant_id', $this->currentTenantId())
             ->findOrFail($userId);
         $this->editingUserId = $userId;
         $this->editName = $user->name;
@@ -92,7 +113,7 @@ public function mount(): void
 
     public function saveEdit(): void
     {
-        $user = User::where('tenant_id', $this->currentTenantId())
+        $user = User::on('mysql')->where('tenant_id', $this->currentTenantId())
             ->findOrFail($this->editingUserId);
         $user->update([
             'name'          => $this->editName,
@@ -112,7 +133,7 @@ public function mount(): void
 
     public function toggleActive(int $userId): void
     {
-        $user = User::where('tenant_id', $this->currentTenantId())
+        $user = User::on('mysql')->where('tenant_id', $this->currentTenantId())
             ->findOrFail($userId);
         $user->update(['is_active' => !$user->is_active]);
         session()->flash('message', $user->name . ' ' . ($user->is_active ? 'activated' : 'deactivated') . '.');
@@ -120,6 +141,7 @@ public function mount(): void
 
     public function render()
     {
+        $this->ensureTenant();
         $tenantId = $this->currentTenantId();
 
         $users = User::query()
@@ -137,9 +159,9 @@ public function mount(): void
             ->orderBy('name')
             ->paginate(20);
 
-        $roles = Role::whereIn('name', [
-            'tenant-admin', 'facility-admin', 'facility-staff', 'coordinator', 'public-user',
-        ])->get();
+$roles = \App\Models\Role::on('mysql')->whereIn('name', [
+    'tenant-admin', 'facility-admin', 'facility-staff', 'coordinator', 'public-user',
+])->get();
 
         return view('livewire.tenant.tenant-user-manager', [
             'users' => $users,

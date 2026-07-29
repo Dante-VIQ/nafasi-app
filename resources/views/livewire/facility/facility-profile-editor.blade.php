@@ -6,7 +6,7 @@
                 <h1 class="text-2xl font-bold text-gray-900">Edit Facility Profile</h1>
                 <p class="text-gray-600">{{ $facility->name }}</p>
             </div>
-            <a href="{{ route('facility.dashboard') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">
+            <a href="{{ url('/facility/dashboard') }}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">
                 ← Back to Dashboard
             </a>
         </div>
