@@ -68,7 +68,7 @@ Route::middleware([
         // Profile and other central routes…
     });
 
-    Route::domain('{subdomain}.nafasi.test')->middleware(['auth', '2fa', 'tenant.session'])->group(function () {
+    Route::domain('{subdomain}.vumbidna.com')->middleware(['auth', '2fa', 'tenant.session'])->group(function () {
         // dd(\App\Models\User::all());
 
         // Tenant Admin routes
