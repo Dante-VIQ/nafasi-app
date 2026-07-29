@@ -72,7 +72,7 @@ class FacilityStaffManager extends Component
             ->orderBy('name')
             ->paginate(15);
 
-        $roles = Role::whereIn('name', ['facility-admin', 'facility-staff'])->get();
+        $roles = Role::on('mysql')->whereIn('name', ['facility-admin', 'facility-staff'])->get();
 
         return view('livewire.facility.facility-staff-manager', [
             'staff' => $staff,
