@@ -18,15 +18,17 @@
     @if($showCreateForm)
         <div class="bg-white rounded-lg shadow p-6 mb-6">
             <h2 class="text-lg font-semibold mb-4">Create Tenant</h2>
-            <div class="bg-yellow-50 text-yellow-800 p-3 rounded mb-4 text-sm">
-                ⚠️ Before submitting, create this exact database in hPanel, with its own
-                dedicated MySQL user (Hostinger gives each database its own user — don't
-                reuse one across tenants):
-                <div class="mt-2 font-mono bg-yellow-100 px-2 py-1 rounded inline-block">
-                    {{ $this->suggestedDbName }}
+            @if($this->isManualProvisioning)
+                <div class="bg-yellow-50 text-yellow-800 p-3 rounded mb-4 text-sm">
+                    ⚠️ Before submitting, create this exact database in hPanel, with its own
+                    dedicated MySQL user (Hostinger gives each database its own user — don't
+                    reuse one across tenants):
+                    <div class="mt-2 font-mono bg-yellow-100 px-2 py-1 rounded inline-block">
+                        {{ $this->suggestedDbName }}
+                    </div>
+                    <div class="mt-1">Then paste the username/password hPanel gives you below — they'll be verified before the tenant is created.</div>
                 </div>
-                <div class="mt-1">Then paste the username/password hPanel gives you below — they'll be verified before the tenant is created.</div>
-            </div>
+            @endif
             <form wire:submit.prevent="createTenant" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium">Tenant ID *</label>
@@ -75,25 +77,31 @@
                     <input wire:model="region" class="mt-1 w-full rounded-lg border-gray-300">
                 </div>
 
-                <div class="md:col-span-2 border-t pt-4 mt-2">
-                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Database credentials (from hPanel)</h3>
-                </div>
+                @if($this->isManualProvisioning)
+                    <div class="md:col-span-2 border-t pt-4 mt-2">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Database credentials (from hPanel)</h3>
+                    </div>
 
-                <div>
-                    <label class="block text-sm font-medium">Database Name *</label>
-                    <input wire:model="tenancy_db_name" class="mt-1 w-full rounded-lg border-gray-300 font-mono text-sm">
-                    @error('tenancy_db_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label class="block text-sm font-medium">Database Username *</label>
-                    <input wire:model="tenancy_db_username" class="mt-1 w-full rounded-lg border-gray-300 font-mono text-sm">
-                    @error('tenancy_db_username') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                </div>
-                <div>
-                    <label class="block text-sm font-medium">Database Password *</label>
-                    <input type="password" wire:model="tenancy_db_password" class="mt-1 w-full rounded-lg border-gray-300 font-mono text-sm">
-                    @error('tenancy_db_password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium">Database Name *</label>
+                        <input wire:model="tenancy_db_name" class="mt-1 w-full rounded-lg border-gray-300 font-mono text-sm">
+                        @error('tenancy_db_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Database Username *</label>
+                        <input wire:model="tenancy_db_username" class="mt-1 w-full rounded-lg border-gray-300 font-mono text-sm">
+                        @error('tenancy_db_username') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Database Password *</label>
+                        <input type="password" wire:model="tenancy_db_password" class="mt-1 w-full rounded-lg border-gray-300 font-mono text-sm">
+                        @error('tenancy_db_password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    </div>
+                @else
+                    <div class="md:col-span-2 border-t pt-4 mt-2 text-sm text-gray-500">
+                        Database will be provisioned automatically — no manual setup needed on this environment.
+                    </div>
+                @endif
 
                 <div class="md:col-span-2 flex justify-end space-x-3">
                     <button type="button" wire:click="$toggle('showCreateForm')" class="px-4 py-2 border rounded-lg">Cancel</button>

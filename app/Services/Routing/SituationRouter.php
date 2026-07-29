@@ -2,29 +2,48 @@
 
 namespace App\Services\Routing;
 
+use App\Models\Tenant;
 use App\Models\Tenant\Facility;
 use App\Services\ML\MlServiceClient;
+use Illuminate\Support\Facades\Log;
 
 class SituationRouter
 {
-    protected MlServiceClient $ml;
+    public function __construct(
+        protected MlServiceClient $ml
+    ) {}
 
-    public function __construct()
+        public function ensureTenant(): void
     {
-        $this->ml = new MlServiceClient;
-    }
+        if (tenancy()->initialized) {
+            return;
+        }
 
+        $host = request()->getHost();
+
+        // This component is tenant-only. Never attempt resolution on the
+        // central domain — CentralCommunityAlertFeed is what renders there.
+        if (in_array($host, config('tenancy.central_domains', []), true)) {
+            return;
+        }
+
+        $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', $host))->first();
+
+        if ($tenant) {
+            tenancy()->initialize($tenant);
+        }
+    }
     public function route(string $text, ?float $lat = null, ?float $lng = null): array
     {
-        $classification = $this->ml->classify($text);
+        $classification = $this->classifySafely($text);
 
         // 1. Crisis takes priority
-        if ($classification['is_crisis']) {
+        if ($classification['is_crisis'] ?? false) {
             return $this->crisisResponse($classification['language'] ?? 'en');
         }
 
         // 2. Anonymous report
-        if ($classification['is_anonymous_report']) {
+        if (($classification['is_anonymous_report'] ?? false) || $this->mentionsAnonymousReport($text)) {
             return [
                 'type' => 'anonymous_report',
                 'message' => 'You can submit an anonymous report safely.',
@@ -33,7 +52,7 @@ class SituationRouter
         }
 
         // 3. Emergency
-        if ($classification['is_emergency']) {
+        if ($classification['is_emergency'] ?? false) {
             return $this->emergencyResponse(
                 $classification['emergency_type'] ?? 'general',
                 $classification['language'] ?? 'en'
@@ -41,18 +60,10 @@ class SituationRouter
         }
 
         // 4. Dispatch needed
-        if ($classification['needs_dispatch']) {
+        if ($classification['needs_dispatch'] ?? false) {
             return $this->dispatchResponse($classification['language'] ?? 'en');
         }
 
-        if (str_contains(strtolower($text), 'report anonymously') ||
-    str_contains(strtolower($text), 'anonymous report')) {
-            return [
-                'type' => 'anonymous_report',
-                'message' => 'You can submit an anonymous report safely.',
-                'redirect_url' => route('report.anonymous'),
-            ];
-        }
         // 5. Find facilities by hints
         $facilities = $this->findFacilitiesByHints(
             $classification['facility_hints'] ?? ['hospital'],
@@ -69,8 +80,47 @@ class SituationRouter
         ];
     }
 
+    /**
+     * Call the ML classifier, but never let its failure crash routing —
+     * this sits in front of crisis detection, so an ML outage must
+     * degrade gracefully (fall through to keyword checks / facility
+     * search) rather than 500 the entire intake flow.
+     */
+    protected function classifySafely(string $text): array
+    {
+        try {
+            return $this->ml->classify($text);
+        } catch (\Throwable $e) {
+            Log::error('SituationRouter: ML classification failed, falling back. '.$e->getMessage());
+
+            return [
+                'is_crisis' => false,
+                'is_anonymous_report' => false,
+                'is_emergency' => false,
+                'needs_dispatch' => false,
+                'language' => 'en',
+                'facility_hints' => ['hospital'],
+                'confidence' => 0.0,
+            ];
+        }
+    }
+
+    /**
+     * Keyword fallback for anonymous-report intent, independent of the
+     * ML classifier — kept as a floor in case the classifier misses it
+     * (or is down and we're on the fallback classification above).
+     */
+    protected function mentionsAnonymousReport(string $text): bool
+    {
+        $text = strtolower($text);
+
+        return str_contains($text, 'report anonymously')
+            || str_contains($text, 'anonymous report');
+    }
+
     protected function findFacilitiesByHints(array $hints, ?float $lat, ?float $lng): array
     {
+        $this->ensureTenant();
         $query = Facility::query()
             ->where('is_active', true)
             ->where('registration_status', 'approved');
@@ -79,10 +129,19 @@ class SituationRouter
             $query->whereIn('facility_type', $hints);
         }
 
-        if ($lat && $lng) {
+        // Explicit null checks, not truthy checks — 0.0 is a valid
+        // latitude (parts of Kenya sit right on the equator), and
+        // `$lat && $lng` would silently skip distance calculation
+        // for exactly those coordinates.
+        if ($lat !== null && $lng !== null) {
             $query->selectRaw('
-                *, 
-                (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance
+                *,
+                (6371 * acos(
+                    LEAST(1, GREATEST(-1,
+                        cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?))
+                        + sin(radians(?)) * sin(radians(latitude))
+                    ))
+                )) AS distance
             ', [$lat, $lng, $lat])
                 ->orderBy('distance')
                 ->having('distance', '<', 20);

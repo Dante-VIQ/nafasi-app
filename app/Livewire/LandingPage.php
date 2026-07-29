@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\InteractionOutcome;
 use App\Models\Tenant\AssistanceRequest;
 use App\Models\User;
 use App\Notifications\CrisisSupportNotification;
 use App\Notifications\FacilityDirectionsNotification;
 use App\Services\Routing\SituationRouter;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -28,16 +28,16 @@ class LandingPage extends Component
     // public string $clarificationQuestion = '';
     // public string $clarificationInput = '';
 
- protected $rules = [
-    'situation' => [
-        'required',
-        'string',
-        'min:2',
-        'max:500',
-        'regex:/^[^<>]*$/',               // no HTML tags
-        'not_regex:/(--|;|\/\*|\*\/)/',   // no SQL comments
-    ],
-];
+    protected $rules = [
+        'situation' => [
+            'required',
+            'string',
+            'min:2',
+            'max:500',
+            'regex:/^[^<>]*$/',               // no HTML tags
+            'not_regex:/(--|;|\/\*|\*\/)/',   // no SQL comments
+        ],
+    ];
 
     public function submit()
     {
@@ -66,6 +66,21 @@ class LandingPage extends Component
             }
         }
         $this->result = $result;
+
+        // Inside submit(), right after $this->result = $result;
+        if ($result['type'] === 'facilities') {
+            InteractionOutcome::create([
+                'tenant_id' => tenant()?->id,
+                'session_id' => session()->getId(),
+                'user_text' => $this->situation,
+                'language' => $result['detected_language'] ?? null,
+                'intent' => ['facility_hints' => $result['facility_hints'] ?? []],
+                'confidence' => $result['confidence'] ?? 0.5,
+                'facility_hints' => $result['facility_hints'] ?? [],
+                'recommended_facility_id' => $result['facilities'][0]['id'] ?? null,
+                'outcome_type' => 'none', // will be updated later
+            ]);
+        }
         // $this->awaitingClarification = false;
     }
 
@@ -137,6 +152,18 @@ class LandingPage extends Component
 
         session()->flash('message', 'Directions sent to '.$phone);
     }
+
+    public function trackAction(string $action, int $facilityId): void
+{
+    InteractionOutcome::where('session_id', session()->getId())
+        ->where('outcome_type', 'none')
+        ->latest()
+        ->first()
+        ?->update([
+            'outcome_type'        => $action, // 'called' or 'directions'
+            'outcome_facility_id' => $facilityId,
+        ]);
+}
 
     public function render()
     {

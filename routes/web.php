@@ -6,6 +6,7 @@ use App\Http\Middleware\InitializePublicTenant;
 use App\Livewire\AboutPage;
 use App\Livewire\Admin\AiDashboard;
 use App\Livewire\Admin\PartnerManager;
+use App\Livewire\Coordinator\OutcomeVerifier;
 use App\Livewire\Coordinator\RequestQueue;
 use App\Livewire\Crisis\CrisisChat;
 use App\Livewire\Emergency\EmergencyDispatchForm;
@@ -19,7 +20,13 @@ use App\Livewire\Tenant\TenantUserManager;
 use App\Livewire\TermsOfService;
 use Illuminate\Support\Facades\Route;
 
-
+// Tenant-aware Livewire endpoint
+Route::middleware([InitializePublicTenant::class])
+    ->group(function () {
+        \Livewire\Livewire::setUpdateRoute(function ($handle) {
+            return Route::post('/livewire/update', $handle);
+        });
+    });
 // ============================================
 // PUBLIC — No Authentication
 // ============================================
@@ -53,18 +60,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', ProfilePage::class)->name('profile');
     Route::get('/profile/security', ProfilePage::class)->name('profile.security');
 
-// Platform Owner & Super Admin
-Route::middleware(['auth', '2fa', 'role:platform-owner,super-admin'])
-    ->prefix('platform')
-    ->name('platform.')
-    ->group(function () {
-        // Dashboard
-        Route::get('/dashboard', \App\Livewire\Platform\PlatformDashboard::class)->name('dashboard');
+    // Platform Owner & Super Admin
+    Route::middleware(['auth', '2fa', 'role:platform-owner,super-admin'])
+        ->prefix('platform')
+        ->name('platform.')
+        ->group(function () {
+            // Dashboard
+            Route::get('/dashboard', PlatformDashboard::class)->name('dashboard');
 
-        // Tenant Management (create, list, manage tenants)
-        Route::get('/tenants', TenantUserManager::class)->name('tenants');
-        Route::get('/tenants/create', TenantManager::class)->name('tenants.create');
-    });
+            // Tenant Management (create, list, manage tenants)
+            Route::get('/tenants', TenantUserManager::class)->name('tenants');
+            Route::get('/tenants/create', TenantManager::class)->name('tenants.create');
+        });
 
     // Admin
     Route::middleware(['role:platform-owner,super-admin'])
@@ -81,6 +88,7 @@ Route::middleware(['auth', '2fa', 'role:platform-owner,super-admin'])
         ->name('coordinator.')
         ->group(function () {
             Route::get('/dashboard', RequestQueue::class)->name('dashboard');
+            Route::get('/verify-outcomes', OutcomeVerifier::class)->name('verify-outcomes');
         });
 });
 

@@ -38,6 +38,8 @@ return [
     'ml_service' => [
         'url' => env('ML_SERVICE_URL', 'http://127.0.0.1:5000'),
         'timeout' => env('ML_SERVICE_TIMEOUT', 3),
+        'mode' => env('ML_MODE', 'php'),          // 'php' or 'python'
+        'key' => env('ML_SERVICE_KEY', ''),
     ],
 
     'africastalking' => [
@@ -52,4 +54,5 @@ return [
         'passkey' => env('MPESA_PASSKEY'),
         'shortcode' => env('MPESA_SHORTCODE'),
     ],
+
 ];

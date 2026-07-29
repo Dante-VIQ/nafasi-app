@@ -1,25 +1,34 @@
 <?php
+
 // app/Livewire/BookingForm.php
 
 namespace App\Livewire;
 
-use App\Jobs\SendSmsNotification;
+use App\Models\InteractionOutcome;
+use App\Models\Tenant;
 use App\Models\Tenant\Appointment;
 use App\Models\Tenant\Facility;
+use App\Models\User;
 use App\Notifications\BookingConfirmationNotification;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
 class BookingForm extends Component
 {
     public Facility $facility;          // still type-hinted
+
     public string $patient_name = '';
+
     public string $patient_phone = '';
+
     public string $patient_email = '';
+
     public ?string $scheduled_at = null;
+
     public string $reason = '';
+
     public bool $showForm = false;
+
     public bool $booked = false;
 
     protected $rules = [
@@ -41,12 +50,12 @@ class BookingForm extends Component
     public function book()
     {
         $this->validate();
-        
-    // Ensure we are inside a tenant context
-    $tenant = \App\Models\Tenant::where('status', 'active')->first();
-    if ($tenant && !tenancy()->initialized) {
-        tenancy()->initialize($tenant);
-    }
+
+        // Ensure we are inside a tenant context
+        $tenant = Tenant::where('status', 'active')->first();
+        if ($tenant && ! tenancy()->initialized) {
+            tenancy()->initialize($tenant);
+        }
         $appointment = Appointment::create([
             'facility_id' => $this->facility->id,
             'patient_name' => $this->patient_name,
@@ -56,12 +65,12 @@ class BookingForm extends Component
             'reason' => $this->reason,
             'status' => 'pending',
             'source' => 'nafasi',
-          'nafasi_session_id' => Str::uuid()->toString(),
+            'nafasi_session_id' => Str::uuid()->toString(),
         ]);
 
         // Send SMS confirmation
         if ($this->patient_phone) {
-            $user = new \App\Models\User();
+            $user = new User;
             $user->phone = $this->patient_phone;
 
             $user->notify(new BookingConfirmationNotification([
@@ -73,6 +82,15 @@ class BookingForm extends Component
         }
 
         $this->booked = true;
+
+        InteractionOutcome::where('session_id', session()->getId())
+            ->where('outcome_type', 'none')
+            ->latest()
+            ->first()
+            ?->update([
+                'outcome_type' => 'booked',
+                'outcome_facility_id' => $this->facility->id,
+            ]);
     }
 
     public function render()

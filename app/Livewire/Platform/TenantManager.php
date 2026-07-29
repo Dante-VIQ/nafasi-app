@@ -34,33 +34,55 @@ class TenantManager extends Component
     public string $tenancy_db_password = '';
 
     /**
+     * True on shared hosting (Hostinger) where the admin must
+     * pre-provision the database in hPanel and paste credentials here.
+     * False on a VPS, where dynamic provisioning creates everything
+     * automatically and these fields don't apply at all.
+     */
+    public function getIsManualProvisioningProperty(): bool
+    {
+        return config('hosting.db_provisioning', 'manual') === 'manual';
+    }
+
+    /**
      * Single source of truth for validation rules. Livewire checks for
      * a rules() method before falling back to a $rules property, so we
      * only define the method — keeping both invites them drifting apart.
      */
     protected function rules(): array
     {
-        return [
-            'id'                  => ['required', 'string', 'alpha_dash', 'max:50', 'unique:tenants,id'],
-            'name'                => ['required', 'string', 'max:255'],
-            'domains'             => ['required', 'array', 'min:1'],
-            'domains.*'           => ['required', 'string', 'max:255', 'distinct', 'unique:domains,domain'],
-            'organization'        => ['nullable', 'string', 'max:255'],
-            'subscription_tier'   => ['required', 'in:chemist,clinic,hospital,government,enterprise'],
-            'region'              => ['nullable', 'string', 'max:100'],
-            'tenancy_db_username' => ['required', 'string'],
-            'tenancy_db_password' => ['required', 'string'],
-            'tenancy_db_name'     => ['required', 'string', new ValidTenantDatabaseCredentials(
+        $rules = [
+            'id'                => ['required', 'string', 'alpha_dash', 'max:50', 'unique:tenants,id'],
+            'name'              => ['required', 'string', 'max:255'],
+            'domains'           => ['required', 'array', 'min:1'],
+            'domains.*'         => ['required', 'string', 'max:255', 'distinct', 'unique:domains,domain'],
+            'organization'      => ['nullable', 'string', 'max:255'],
+            'subscription_tier' => ['required', 'in:chemist,clinic,hospital,government,enterprise'],
+            'region'            => ['nullable', 'string', 'max:100'],
+        ];
+
+        // Only required — and only verified against a live connection —
+        // in manual mode. In dynamic mode these fields don't exist in
+        // the form at all, so validating them would always fail.
+        if ($this->isManualProvisioning) {
+            $rules['tenancy_db_username'] = ['required', 'string'];
+            $rules['tenancy_db_password'] = ['required', 'string'];
+            $rules['tenancy_db_name']     = ['required', 'string', new ValidTenantDatabaseCredentials(
                 $this->tenancy_db_username,
                 $this->tenancy_db_password,
-            )],
-        ];
+            )];
+        }
+
+        return $rules;
     }
 
     public function mount()
     {
         $this->loadTenants();
-        $this->syncSuggestedDbName();
+
+        if ($this->isManualProvisioning) {
+            $this->syncSuggestedDbName();
+        }
     }
 
     /**
@@ -84,7 +106,9 @@ class TenantManager extends Component
      */
     public function updatedId(): void
     {
-        $this->syncSuggestedDbName();
+        if ($this->isManualProvisioning) {
+            $this->syncSuggestedDbName();
+        }
     }
 
     protected function syncSuggestedDbName(): void
@@ -121,7 +145,7 @@ class TenantManager extends Component
     {
         $this->validate();
 
-        $tenant = Tenant::create([
+        $attributes = [
             'id'                  => $this->id,
             'name'                => $this->name,
             'organization'        => $this->organization ?: $this->name,
@@ -130,10 +154,22 @@ class TenantManager extends Component
             'region'              => $this->region,
             'country'             => 'KE',
             'status'              => 'active',
-            'tenancy_db_name'     => $this->tenancy_db_name,
-            'tenancy_db_username' => $this->tenancy_db_username,
-            'tenancy_db_password' => $this->tenancy_db_password,
-        ]);
+        ];
+
+        if ($this->isManualProvisioning) {
+            // Shared hosting: credentials point at a database the admin
+            // already created in hPanel — NoOpMySQLDatabaseManager just
+            // verifies and uses it, never creates anything.
+            $attributes['tenancy_db_name']     = $this->tenancy_db_name;
+            $attributes['tenancy_db_username'] = $this->tenancy_db_username;
+            $attributes['tenancy_db_password'] = $this->tenancy_db_password;
+        }
+        // Dynamic mode (VPS): leave these null. stancl/tenancy's real
+        // MySQLDatabaseManager auto-generates a name and creates the
+        // database + user itself, triggered by the TenantCreated event
+        // fired inside Tenant::create() below.
+
+        $tenant = Tenant::create($attributes);
 
         // Filter out any blank slots left from add/remove interactions,
         // then attach every domain to this tenant.

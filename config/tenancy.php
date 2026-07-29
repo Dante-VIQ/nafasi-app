@@ -68,9 +68,10 @@ return [
             // 'pgsql' => Stancl\Tenancy\TenantDatabaseManagers\PostgreSQLDatabaseManager::class,
             // 'mysql' => \App\Tenancy\NoOpMySQLDatabaseManager::class,
 
-    'mysql' => env('APP_ENV') === 'local'
+    'mysql' => env('TENANCY_DB_PROVISIONING', 'manual') === 'dynamic'
         ? \Stancl\Tenancy\TenantDatabaseManagers\MySQLDatabaseManager::class
         : \App\Tenancy\NoOpMySQLDatabaseManager::class,
+
     
 
         /**
