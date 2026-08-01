@@ -79,6 +79,12 @@ class LandingPage extends Component
                 'facility_hints' => $result['facility_hints'] ?? [],
                 'recommended_facility_id' => $result['facilities'][0]['id'] ?? null,
                 'outcome_type' => 'none', // will be updated later
+                'risk_assessment' => $result['risk'] ?? null,
+                'decision' => $result['decision'] ?? null,
+                'escalated' => $result['escalation']['should_escalate'] ?? false,
+                'escalation_level' => $result['escalation']['escalation_level'] ?? null,
+                'escalation_reasons' => $result['escalation']['reasons'] ?? null,
+                'llm_verification' => $result['llm_verification'] ?? null,
             ]);
         }
         // $this->awaitingClarification = false;
@@ -154,16 +160,16 @@ class LandingPage extends Component
     }
 
     public function trackAction(string $action, int $facilityId): void
-{
-    InteractionOutcome::where('session_id', session()->getId())
-        ->where('outcome_type', 'none')
-        ->latest()
-        ->first()
-        ?->update([
-            'outcome_type'        => $action, // 'called' or 'directions'
-            'outcome_facility_id' => $facilityId,
-        ]);
-}
+    {
+        InteractionOutcome::where('session_id', session()->getId())
+            ->where('outcome_type', 'none')
+            ->latest()
+            ->first()
+            ?->update([
+                'outcome_type' => $action, // 'called' or 'directions'
+                'outcome_facility_id' => $facilityId,
+            ]);
+    }
 
     public function render()
     {

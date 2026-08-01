@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class DictionaryEntry extends Model
 {
+     protected $connection = 'mysql';
+
     protected $fillable = [
         'word',
         'word_normalized',

@@ -26,6 +26,17 @@
                             class="text-sm text-gray-600 hover:text-gray-900">Coordinator</a>
                     @endif
 
+                    @if (auth()->user()->isCoordinator() || auth()->user()->isPlatformAdmin())
+                        <a href="{{ url('/coordinator/verify-outcomes') }}"
+                            class="text-sm text-gray-600 hover:text-gray-900">
+                            Verify AI Outcomes
+                        </a>
+
+                        <a href="{{ url('/coordinator/escalations') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                            ⚡ Escalations
+                        </a>
+                    @endif
+
                     @if (auth()->user()->isVerificationPartner() || auth()->user()->isPlatformAdmin())
                         <a href="{{ url('/verification/queue') }}"
                             class="text-sm text-gray-600 hover:text-gray-900">Verification</a>
@@ -40,6 +51,10 @@
 
                         <a href="{{ url('/alerts/manage') }}" class="text-sm text-gray-600 hover:text-gray-900">
                             🚨 Missing Persons
+                        </a>
+
+                        <a href="{{ url('/admin/model-evaluation') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                            📊 Model Evaluation
                         </a>
                     @endif
 

@@ -27,6 +27,7 @@ Route::middleware([InitializePublicTenant::class])
             return Route::post('/livewire/update', $handle);
         });
     });
+
 // ============================================
 // PUBLIC — No Authentication
 // ============================================
@@ -80,6 +81,7 @@ Route::middleware(['auth'])->group(function () {
         ->group(function () {
             Route::get('/ai-dashboard', AiDashboard::class)->name('ai.dashboard');
             Route::get('/partners', PartnerManager::class)->name('partners');
+                    Route::get('/model-evaluation', \App\Livewire\Admin\ModelEvaluation::class)->name('model-evaluation');
         });
 
     // Verification Partner
@@ -89,6 +91,7 @@ Route::middleware(['auth'])->group(function () {
         ->group(function () {
             Route::get('/dashboard', RequestQueue::class)->name('dashboard');
             Route::get('/verify-outcomes', OutcomeVerifier::class)->name('verify-outcomes');
+                    Route::get('/escalations', \App\Livewire\Coordinator\EscalationDashboard::class)->name('escalations');
         });
 });
 

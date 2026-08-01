@@ -4,6 +4,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Services\Learning\ContinuousLearner;
 use App\Services\ML\MlServiceClient;
 use Illuminate\Support\Facades\Http;
 use Livewire\Component;
@@ -48,6 +49,13 @@ class AiDashboard extends Component
     public function getMlProperty(): MlServiceClient
     {
         return $this->ml ??= new MlServiceClient;
+    }
+
+    public function triggerLearning(): void
+    {
+        $learner = new ContinuousLearner;
+        $result = $learner->learn();
+        session()->flash('learning_result', $result);
     }
 
     public function loadDashboard(): void
@@ -98,41 +106,41 @@ class AiDashboard extends Component
         }
     }
 
-public function triggerTraining(): void
-{
-    $this->isTraining = true;
-    $this->trainingStatus = 'Training in progress...';
+    public function triggerTraining(): void
+    {
+        $this->isTraining = true;
+        $this->trainingStatus = 'Training in progress...';
 
-    try {
-        $response = \Illuminate\Support\Facades\Http::timeout(300)
-            ->post(config('services.ml_service.url') . '/learn', [
-                'days' => $this->trainingDays,
-                'triggered_by' => 'super_admin',
-            ]);
+        try {
+            $response = Http::timeout(300)
+                ->post(config('services.ml_service.url').'/learn', [
+                    'days' => $this->trainingDays,
+                    'triggered_by' => 'super_admin',
+                ]);
 
-        if ($response->successful()) {
-            $result = $response->json();
+            if ($response->successful()) {
+                $result = $response->json();
 
-            if ($result['status'] === 'learned') {
-                $this->trainingStatus = sprintf(
-                    'Training complete. Analyzed %d interactions. Found %d new patterns.',
-                    $result['interactions_analyzed'] ?? 0,
-                    $result['new_patterns_found'] ?? 0
-                );
-            } elseif ($result['status'] === 'insufficient_data') {
-                $this->trainingStatus = 'Not enough data to train. Need at least 50 interactions.';
+                if ($result['status'] === 'learned') {
+                    $this->trainingStatus = sprintf(
+                        'Training complete. Analyzed %d interactions. Found %d new patterns.',
+                        $result['interactions_analyzed'] ?? 0,
+                        $result['new_patterns_found'] ?? 0
+                    );
+                } elseif ($result['status'] === 'insufficient_data') {
+                    $this->trainingStatus = 'Not enough data to train. Need at least 50 interactions.';
+                } else {
+                    $this->trainingStatus = 'Training finished: '.($result['status'] ?? 'unknown status');
+                }
             } else {
-                $this->trainingStatus = 'Training finished: ' . ($result['status'] ?? 'unknown status');
+                $this->trainingStatus = 'Training failed (HTTP '.$response->status().')';
             }
-        } else {
-            $this->trainingStatus = 'Training failed (HTTP ' . $response->status() . ')';
+        } catch (\Exception $e) {
+            $this->trainingStatus = 'Error: '.$e->getMessage();
         }
-    } catch (\Exception $e) {
-        $this->trainingStatus = 'Error: ' . $e->getMessage();
-    }
 
-    $this->isTraining = false;
-}
+        $this->isTraining = false;
+    }
 
     public function testClassification(): void
     {

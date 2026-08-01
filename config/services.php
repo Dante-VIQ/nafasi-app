@@ -55,4 +55,9 @@ return [
         'shortcode' => env('MPESA_SHORTCODE'),
     ],
 
+    'llm' => [
+    'mode'     => env('LLM_MODE', 'simulate'),     // 'simulate' or 'real'
+    'endpoint' => env('LLM_ENDPOINT', ''),
+    'api_key'  => env('LLM_API_KEY', ''),
+],
 ];
